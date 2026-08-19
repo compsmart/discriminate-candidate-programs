@@ -135,7 +135,7 @@ primitive library, and ledger. Sibling skill directories are searched in order:
 generations are supported and self-tested.
 
 ```bash
-REPO=https://github.com/compsmart/discriminate-candidate-programs-skill.git
+REPO=https://github.com/compsmart/discriminate-candidate-programs.git
 
 git clone $REPO ~/.claude/skills/discriminate-candidate-programs   # Claude Code
 git clone $REPO ~/.codex/skills/discriminate-candidate-programs    # Codex
@@ -219,7 +219,7 @@ claim.
 ## Relationship to the synthesis engine
 
 This skill is a pre-freeze gate for a bounded typed-program synthesis engine —
-[`verified-logic-synthesizer`](https://github.com/compsmart/verified-logic-synthesizer-skill)
+[`verified-logic-synthesizer`](https://github.com/compsmart/verified-logic-synthesizer)
 or its predecessor `synthesize-verified-code` —
 which searches typed primitive compositions and qualifies a frozen winner
 against held-out cases. It reuses the engine's interpreter, primitive library,
