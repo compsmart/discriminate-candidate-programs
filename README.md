@@ -219,7 +219,8 @@ claim.
 ## Relationship to the synthesis engine
 
 This skill is a pre-freeze gate for a bounded typed-program synthesis engine —
-`verified-logic-synthesizer` or its predecessor `synthesize-verified-code` —
+[`verified-logic-synthesizer`](https://github.com/compsmart/verified-logic-synthesizer-skill)
+or its predecessor `synthesize-verified-code` —
 which searches typed primitive compositions and qualifies a frozen winner
 against held-out cases. It reuses the engine's interpreter, primitive library,
 and hash-chained ledger, and modifies nothing in it: the engine's own self-test
