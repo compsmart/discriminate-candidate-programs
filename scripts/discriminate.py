@@ -28,10 +28,17 @@ PROBES_SCHEMA = "dcp-probes-v1"
 ANSWERS_SCHEMA = "dcp-answers-v1"
 RESOLUTION_SCHEMA = "dcp-resolution-v1"
 
-DEFAULT_ENGINE = (
-    Path(__file__).resolve().parent.parent.parent
-    / "synthesize-verified-code" / "scripts" / "synthesize.py"
-)
+# Sibling skill directories are searched in order; the first that exists wins.
+ENGINE_CANDIDATES = ("verified-logic-synthesizer", "synthesize-verified-code")
+
+
+def default_engine() -> Path | None:
+    skills = Path(__file__).resolve().parent.parent.parent
+    for name in ENGINE_CANDIDATES:
+        candidate = skills / name / "scripts" / "synthesize.py"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 class DiscriminationError(RuntimeError):
@@ -39,7 +46,14 @@ class DiscriminationError(RuntimeError):
 
 
 def load_engine(explicit: Path | None) -> Any:
-    path = (explicit or DEFAULT_ENGINE).resolve()
+    resolved = explicit or default_engine()
+    if resolved is None:
+        raise DiscriminationError(
+            "no synthesis engine found; install one of "
+            + ", ".join(ENGINE_CANDIDATES)
+            + " beside this skill, or pass --engine with the path to synthesize.py"
+        )
+    path = resolved.resolve()
     if not path.is_file():
         raise DiscriminationError(
             f"synthesis engine not found at {path}; pass --engine with the path to synthesize.py"

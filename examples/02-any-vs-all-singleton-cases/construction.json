@@ -1,5 +1,5 @@
 {
-  "schema": "svc-synthesis-v2",
+  "schema": "svc-synthesis-v3",
   "function_name": "has_negative",
   "mode": "focused",
   "inputs": [{"name": "values", "type": "list_int"}],

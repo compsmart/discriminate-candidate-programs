@@ -11,15 +11,15 @@ decided by enumeration order. This skill turns that silent choice into an
 explicit question.
 
 Require Python 3.10 or newer. Dependency-free. It reuses the interpreter,
-primitive library, and ledger from a synthesis engine; `synthesize-verified-code`
-must be installed alongside it, or pass `--engine` with the path to any
-compatible `synthesize.py`.
+primitive library, and ledger from a synthesis engine installed beside it.
+Sibling skill directories are searched in order — `verified-logic-synthesizer`
+first, then `synthesize-verified-code` — or pass `--engine` with the path to
+any compatible `synthesize.py`.
 
-Both engine generations are supported and self-tested: the v2 engine
-(`synthesize-verified-code`) and the v3 engine (`verified-logic-synthesizer`),
-which differ in evaluation arity, ledger construction, constant normalization,
-and the required opening ledger event. Both carry the same ambiguity blind
-spot, so this gate is worth running against either.
+Both engine generations are supported and self-tested. They differ in
+evaluation arity, ledger construction, constant normalization, and the
+required opening ledger event, and they carry the same ambiguity blind spot,
+so this gate is worth running against either.
 
 On Windows, run each command on one line. The line continuations below work in
 Git Bash and PowerShell respectively.
@@ -40,8 +40,8 @@ duplicates, tie-breaking, ordering, any versus all.
 
 ## Workflow
 
-1. Write the construction spec exactly as `synthesize-verified-code` requires.
-   Use the same file for both skills.
+1. Write the construction spec exactly as the synthesis engine requires. Use
+   the same file for both skills.
 
 2. Enumerate every equally minimal program that fits:
 
@@ -101,7 +101,7 @@ duplicates, tie-breaking, ordering, any versus all.
    This writes `resolution.json` and `augmented-construction.json` — the
    original spec with the answered probes appended as ordinary cases.
 
-6. Run `synthesize-verified-code` on `augmented-construction.json` against your
+6. Run the synthesis engine on `augmented-construction.json` against your
    untouched qualification file, then qualify, translate, and retain as usual.
    The augmented spec is now strong enough that the engine's first winner is
    also its only winner.

@@ -129,8 +129,10 @@ Resolved probes become construction cases, never qualification cases.
 
 ## Install
 
-Requires [`synthesize-verified-code`](#relationship-to-synthesize-verified-code)
-installed alongside it, for the interpreter, primitive library, and ledger.
+Requires a synthesis engine installed alongside it, for the interpreter,
+primitive library, and ledger. Sibling skill directories are searched in order:
+`verified-logic-synthesizer` first, then `synthesize-verified-code`. Both
+generations are supported and self-tested.
 
 ```bash
 git clone https://github.com/compsmart/-discriminate-candidate-programs-skill.git \
@@ -143,6 +145,10 @@ python ~/.claude/skills/discriminate-candidate-programs/scripts/discriminate.py 
 ```
 
 If the engine lives elsewhere, pass `--engine /path/to/synthesize.py`.
+
+The example specs declare the `svc-*-v3` schema, matching
+`verified-logic-synthesizer`. Against the older engine, change those strings to
+`v2`.
 
 ## Usage
 
@@ -207,14 +213,19 @@ claim.
 - **`NO_SURVIVOR` is a finding, not a failure to retry.** The authority has
   excluded every program in the grammar.
 
-## Relationship to synthesize-verified-code
+## Relationship to the synthesis engine
 
-This skill is a pre-freeze gate for
-[`synthesize-verified-code`](https://github.com/compsmart), which searches typed
-primitive compositions and qualifies a frozen winner against held-out cases. It
-reuses that engine's interpreter, primitive library, and hash-chained ledger,
-and modifies nothing in it — the engine's own self-test still passes, and its
-`verify-ledger` validates the ledgers written here.
+This skill is a pre-freeze gate for a bounded typed-program synthesis engine —
+`verified-logic-synthesizer` or its predecessor `synthesize-verified-code` —
+which searches typed primitive compositions and qualifies a frozen winner
+against held-out cases. It reuses the engine's interpreter, primitive library,
+and hash-chained ledger, and modifies nothing in it: the engine's own self-test
+and test suite still pass, and its `verify-ledger` validates the ledgers
+written here.
+
+Both engine generations share the early halt and the observational-equivalence
+collapse, so both promote an arbitrary winner on an underdetermined spec. This
+gate is independent of which one you run.
 
 The design follows the R20 lesson from the PTSS cognition programme: when an
 observation underdetermines the program, actively generate discriminating cases
