@@ -1,0 +1,15 @@
+{
+  "schema": "svc-synthesis-v2",
+  "function_name": "count_positive",
+  "mode": "focused",
+  "inputs": [{"name": "values", "type": "list_int"}],
+  "output_type": "int",
+  "constants": [0],
+  "primitives": ["each_greater", "each_greater_equal", "select", "length"],
+  "limits": {"max_nodes": 6},
+  "cases": [
+    {"id": "c1", "inputs": {"values": [-2, 3, 4]}, "expected": 2},
+    {"id": "c2", "inputs": {"values": [-3, -1]}, "expected": 0},
+    {"id": "c3", "inputs": {"values": [5]}, "expected": 1}
+  ]
+}

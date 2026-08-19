@@ -1,0 +1,5 @@
+{
+  "schema": "dcp-answers-v1",
+  "authority": "example-specification-count-strictly-positive",
+  "answers": [{"probe_id": "p001", "expected": 0}]
+}

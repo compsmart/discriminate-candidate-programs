@@ -1,0 +1,5 @@
+{
+  "schema": "dcp-answers-v1",
+  "authority": "example-specification-empty-list-has-no-negative",
+  "answers": [{"probe_id": "p001", "expected": false}]
+}

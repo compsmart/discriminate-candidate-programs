@@ -1,0 +1,8 @@
+{
+  "schema": "svc-qualification-v2",
+  "authority": "example-held-fresh-cases",
+  "cases": [
+    {"id": "q1", "inputs": {"values": [-7]}, "expected": true},
+    {"id": "q2", "inputs": {"values": [2]}, "expected": false}
+  ]
+}

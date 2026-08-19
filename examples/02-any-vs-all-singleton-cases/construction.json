@@ -1,0 +1,15 @@
+{
+  "schema": "svc-synthesis-v2",
+  "function_name": "has_negative",
+  "mode": "focused",
+  "inputs": [{"name": "values", "type": "list_int"}],
+  "output_type": "bool",
+  "constants": [0],
+  "primitives": ["each_less", "any", "all"],
+  "limits": {"max_nodes": 5},
+  "cases": [
+    {"id": "c1", "inputs": {"values": [-1]}, "expected": true},
+    {"id": "c2", "inputs": {"values": [5]}, "expected": false},
+    {"id": "c3", "inputs": {"values": [-3]}, "expected": true}
+  ]
+}
