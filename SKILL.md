@@ -11,8 +11,15 @@ decided by enumeration order. This skill turns that silent choice into an
 explicit question.
 
 Require Python 3.10 or newer. Dependency-free. It reuses the interpreter,
-primitive library, and ledger from `synthesize-verified-code`; that skill must
-be installed alongside it, or pass `--engine` with the path to `synthesize.py`.
+primitive library, and ledger from a synthesis engine; `synthesize-verified-code`
+must be installed alongside it, or pass `--engine` with the path to any
+compatible `synthesize.py`.
+
+Both engine generations are supported and self-tested: the v2 engine
+(`synthesize-verified-code`) and the v3 engine (`verified-logic-synthesizer`),
+which differ in evaluation arity, ledger construction, constant normalization,
+and the required opening ledger event. Both carry the same ambiguity blind
+spot, so this gate is worth running against either.
 
 On Windows, run each command on one line. The line continuations below work in
 Git Bash and PowerShell respectively.

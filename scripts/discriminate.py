@@ -56,6 +56,44 @@ def load_engine(explicit: Path | None) -> Any:
     return module
 
 
+# The v2 engine (synthesize-verified-code) and the v3 engine
+# (verified-logic-synthesizer) differ in three signatures: v3 added resource
+# limits to evaluation and a byte cap to the ledger. These shims let one script
+# drive either engine.
+#
+# The arity is inspected once rather than discovered by catching TypeError at
+# the call site. A genuine TypeError raised from inside evaluation is an
+# ordinary candidate failure, and must not be mistaken for a signature
+# mismatch and silently retried.
+
+def accepts_limits(function: Any, count: int) -> bool:
+    import inspect
+    try:
+        return len(inspect.signature(function).parameters) >= count
+    except (TypeError, ValueError):
+        return False
+
+
+def make_ledger(E: Any, path: Path, limits: Mapping[str, Any]) -> Any:
+    if accepts_limits(E.Ledger.__init__, 3):
+        return E.Ledger(path, int(limits.get("max_ledger_bytes", 67_108_864)))
+    return E.Ledger(path)
+
+
+def outcomes(E: Any, expr: Any, cases: Sequence[Mapping[str, Any]],
+             primitives: Mapping[str, Any], limits: Mapping[str, Any]) -> tuple[Any, ...] | None:
+    if accepts_limits(E.outcome_vector, 4):
+        return E.outcome_vector(expr, cases, primitives, limits)
+    return E.outcome_vector(expr, cases, primitives)
+
+
+def evaluate_one(E: Any, expr: Any, inputs: Mapping[str, Any],
+                 primitives: Mapping[str, Any], limits: Mapping[str, Any]) -> Any:
+    if accepts_limits(E.evaluate, 4):
+        return E.evaluate(expr, inputs, primitives, limits)
+    return E.evaluate(expr, inputs, primitives)
+
+
 # --------------------------------------------------------------------------
 # Survivor enumeration
 # --------------------------------------------------------------------------
@@ -89,12 +127,16 @@ def enumerate_survivors(E: Any, spec: Mapping[str, Any], primitives: Mapping[str
 
     for item in spec["inputs"]:
         expr = E.Expr(item["type"], "input", name=item["name"])
-        outputs = E.outcome_vector(expr, cases, primitives)
+        outputs = outcomes(E, expr, cases, primitives, limits)
         if outputs is not None:
             admit(expr, outputs)
     for constant in spec["constants"]:
-        expr = E.Expr(E.infer_type(constant), "constant", value=constant)
-        outputs = E.outcome_vector(expr, cases, primitives)
+        # v2 leaves constants as raw values; v3 normalizes them to {type, value}.
+        if isinstance(constant, Mapping):
+            expr = E.Expr(constant["type"], "constant", value=constant["value"])
+        else:
+            expr = E.Expr(E.infer_type(constant), "constant", value=constant)
+        outputs = outcomes(E, expr, cases, primitives, limits)
         if outputs is not None:
             admit(expr, outputs)
 
@@ -120,7 +162,7 @@ def enumerate_survivors(E: Any, spec: Mapping[str, Any], primitives: Mapping[str
                 budget_hit = True
                 return False
             candidates += 1
-        outputs = E.outcome_vector(expr, cases, primitives)
+        outputs = outcomes(E, expr, cases, primitives, limits)
         if outputs is not None:
             if expr.result == spec["output_type"] and outputs == expected:
                 winners.append(expr)
@@ -131,7 +173,7 @@ def enumerate_survivors(E: Any, spec: Mapping[str, Any], primitives: Mapping[str
         for expr in list(buckets.get((type_name, 1), [])):
             if expr.result == spec["output_type"]:
                 candidates += 1
-                outputs = E.outcome_vector(expr, cases, primitives)
+                outputs = outcomes(E, expr, cases, primitives, limits)
                 if outputs is not None and outputs == expected:
                     winners.append(expr)
 
@@ -159,7 +201,7 @@ def enumerate_survivors(E: Any, spec: Mapping[str, Any], primitives: Mapping[str
                 stop_reason = "tier_complete_with_survivors"
                 break
 
-    expanded = expand_winners(E, winners, classes, sig_of, primitives, cases, expected, max_variants)
+    expanded = expand_winners(E, winners, classes, sig_of, primitives, cases, expected, limits, max_variants)
     return {
         "winners_enumerated": len(winners),
         "survivors": expanded,
@@ -173,7 +215,7 @@ def enumerate_survivors(E: Any, spec: Mapping[str, Any], primitives: Mapping[str
 def expand_winners(E: Any, winners: Sequence[Any], classes: Mapping[tuple[str, str], list[Any]],
                    sig_of: Mapping[str, tuple[str, str]], primitives: Mapping[str, Any],
                    cases: Sequence[Mapping[str, Any]], expected: tuple[Any, ...],
-                   max_variants: int) -> list[Any]:
+                   limits: Mapping[str, Any], max_variants: int) -> list[Any]:
     """Substitute observationally-equivalent subexpressions of the same size.
 
     Same size only. That keeps the recursion well-founded (arguments are always
@@ -222,7 +264,7 @@ def expand_winners(E: Any, winners: Sequence[Any], classes: Mapping[tuple[str, s
         for variant in variants(winner):
             if variant.identity in seen:
                 continue
-            outputs = E.outcome_vector(variant, cases, primitives)
+            outputs = outcomes(E, variant, cases, primitives, limits)
             if outputs is None or outputs != expected:
                 continue
             seen.add(variant.identity)
@@ -294,9 +336,10 @@ def probe_inputs(E: Any, spec: Mapping[str, Any], rng: random.Random, sample: in
     return collected
 
 
-def outcome(E: Any, expr: Any, inputs: Mapping[str, Any], primitives: Mapping[str, Any]) -> dict[str, Any]:
+def outcome(E: Any, expr: Any, inputs: Mapping[str, Any], primitives: Mapping[str, Any],
+            limits: Mapping[str, Any]) -> dict[str, Any]:
     try:
-        return {"ok": True, "value": E.evaluate(expr, inputs, primitives)}
+        return {"ok": True, "value": evaluate_one(E, expr, inputs, primitives, limits)}
     except (ArithmeticError, IndexError, TypeError, ValueError, KeyError) as exc:
         return {"ok": False, "error": type(exc).__name__}
 
@@ -349,8 +392,11 @@ def command_survivors(E: Any, args: argparse.Namespace) -> dict[str, Any]:
     primitives = E.focused_primitives(spec)
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
-    ledger = E.Ledger(output / "probe-ledger.jsonl")
-    ledger.append("ENUMERATION_OPENED", {
+    ledger = make_ledger(E, output / "probe-ledger.jsonl", spec["limits"])
+    # Named EXPERIMENT_STARTED because the v3 engine's ledger verifier requires
+    # that opening event; the phase field keeps the two ledgers distinguishable.
+    ledger.append("EXPERIMENT_STARTED", {
+        "phase": "enumeration",
         "construction_spec_digest": E.digest(spec),
         "construction_case_count": len(spec["cases"]),
         "primitive_count": len(primitives),
@@ -422,7 +468,7 @@ def command_probes(E: Any, args: argparse.Namespace) -> dict[str, Any]:
     table: list[dict[str, str]] = []
     for assignment in inputs:
         column = {
-            identifier: E.canonical_json(outcome(E, expr, assignment, primitives))
+            identifier: E.canonical_json(outcome(E, expr, assignment, primitives, spec['limits']))
             for identifier, expr in programs.items()
         }
         table.append(column)
@@ -432,7 +478,7 @@ def command_probes(E: Any, args: argparse.Namespace) -> dict[str, Any]:
     for order, index in enumerate(chosen, 1):
         predictions = []
         for identifier in identifiers:
-            result = outcome(E, programs[identifier], inputs[index], primitives)
+            result = outcome(E, programs[identifier], inputs[index], primitives, spec['limits'])
             predictions.append({
                 "survivor_id": identifier,
                 "predicted": result["value"] if result["ok"] else None,
@@ -511,8 +557,9 @@ def command_resolve(E: Any, args: argparse.Namespace) -> dict[str, Any]:
     ]
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
-    ledger = E.Ledger(output / "resolution-ledger.jsonl")
-    ledger.append("RESOLUTION_OPENED", {
+    ledger = make_ledger(E, output / "resolution-ledger.jsonl", spec["limits"])
+    ledger.append("EXPERIMENT_STARTED", {
+        "phase": "resolution",
         "construction_spec_digest": survivors_document["construction_spec_digest"],
         "authority": authority,
         "answered_probes": sorted(answers),
@@ -553,7 +600,7 @@ def command_resolve(E: Any, args: argparse.Namespace) -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 SELF_TEST_CONSTRUCTION = {
-    "schema": "svc-synthesis-v2",
+    "schema": None,  # filled from the loaded engine's SCHEMA, so either version can run it
     "function_name": "count_positive",
     "mode": "focused",
     "inputs": [{"name": "values", "type": "list_int"}],
@@ -586,7 +633,8 @@ def command_self_test(E: Any, args: argparse.Namespace) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="dcp-self-test-") as temporary:
         root = Path(temporary)
         construction = root / "construction.json"
-        E.atomic_json(construction, SELF_TEST_CONSTRUCTION)
+        spec = dict(SELF_TEST_CONSTRUCTION, schema=E.SCHEMA)
+        E.atomic_json(construction, spec)
 
         found = command_survivors(E, argparse.Namespace(
             construction=construction, output=root / "run", max_variants=200))
