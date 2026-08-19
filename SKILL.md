@@ -46,7 +46,7 @@ duplicates, tie-breaking, ordering, any versus all.
 2. Enumerate every equally minimal program that fits:
 
    ```bash
-   python C:/Users/brad/.claude/skills/discriminate-candidate-programs/scripts/discriminate.py survivors \
+   python scripts/discriminate.py survivors \
      --construction construction.json \
      --output .dcp/run-001
    ```

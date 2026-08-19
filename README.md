@@ -3,8 +3,8 @@
 Detects when your examples fit more than one minimal program, then asks the
 fewest questions needed to pick the right one.
 
-A [Claude Code](https://claude.com/claude-code) skill. Dependency-free Python,
-3.10 or newer.
+An agent skill (Claude Code, Codex, or any harness that reads a `SKILL.md` at
+the repository root). Dependency-free Python, 3.10 or newer.
 
 ## The problem
 
@@ -135,9 +135,12 @@ primitive library, and ledger. Sibling skill directories are searched in order:
 generations are supported and self-tested.
 
 ```bash
-git clone https://github.com/compsmart/-discriminate-candidate-programs-skill.git \
-  ~/.claude/skills/discriminate-candidate-programs
-python ~/.claude/skills/discriminate-candidate-programs/scripts/discriminate.py self-test
+REPO=https://github.com/compsmart/-discriminate-candidate-programs-skill.git
+
+git clone $REPO ~/.claude/skills/discriminate-candidate-programs   # Claude Code
+git clone $REPO ~/.codex/skills/discriminate-candidate-programs    # Codex
+
+python <skills-dir>/discriminate-candidate-programs/scripts/discriminate.py self-test
 ```
 
 ```json
@@ -153,7 +156,7 @@ The example specs declare the `svc-*-v3` schema, matching
 ## Usage
 
 ```bash
-D=~/.claude/skills/discriminate-candidate-programs/scripts/discriminate.py
+D=<skills-dir>/discriminate-candidate-programs/scripts/discriminate.py
 
 python $D survivors --construction construction.json --output run
 # stop here if determination is UNIQUE
@@ -241,3 +244,6 @@ scripts/discriminate.py   the engine: survivors, probes, resolve, self-test
 references/method.md      method, file formats, worked example
 examples/                 two runnable ambiguities with expected output
 ```
+
+The skill is agent-agnostic: nothing in `scripts/` depends on which harness
+loads it.
