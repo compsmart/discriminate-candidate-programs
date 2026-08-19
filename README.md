@@ -135,7 +135,7 @@ primitive library, and ledger. Sibling skill directories are searched in order:
 generations are supported and self-tested.
 
 ```bash
-REPO=https://github.com/compsmart/-discriminate-candidate-programs-skill.git
+REPO=https://github.com/compsmart/discriminate-candidate-programs-skill.git
 
 git clone $REPO ~/.claude/skills/discriminate-candidate-programs   # Claude Code
 git clone $REPO ~/.codex/skills/discriminate-candidate-programs    # Codex
